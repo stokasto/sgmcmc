@@ -15,7 +15,7 @@ class SGLDSampler(object):
         self.precondition = precondition
         self.prepared = False
 
-    def prepare_updates(self, cost, params, epsilon, A=1., inputs=[], **kwargs):
+    def prepare_updates(self, cost, params, epsilon, A=1., inputs=[], scale_grad=1., **kwargs):
         self.updates = []
         grads = T.grad(cost, params)
         self.params = params
@@ -37,11 +37,11 @@ class SGLDSampler(object):
                 self.updates.append((g, g_t))
                 self.updates.append((g2, g2_t))
                 self.updates.append((xi, xi_t))
-                noise = 0. # 0.5 * self.epsilon * Minv**2
+                noise = 0.
             else:
                 Minv = 1.
                 noise = 0.
-            sigma = T.sqrt(2. * self.epsilon * (Minv * (self.A - noise)))
+            sigma = T.sqrt(2. * self.epsilon * (Minv * (self.A - noise))) / T.cast(scale_grad, dtype=theano.config.floatX)
             sample_t = self._srng.normal(size=theta.shape) * sigma
             theta_t = theta - self.epsilon * Minv * self.A * grad + sample_t 
             self.updates.append((theta, theta_t))
