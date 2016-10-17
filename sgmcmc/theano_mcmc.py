@@ -32,10 +32,10 @@ class SGHMCSampler(object):
             self.A = T.cast(newA, theano.config.floatX)
             print("You specified mdecay of {} -> changing A to {}".format(mdecay, newA))
         for theta,grad in zip(params, grads):
-            xi = sharedX(theta.get_value() * 0. + 1)
-            g = sharedX(theta.get_value() * 0. + 1)
-            g2 = sharedX(theta.get_value() * 0. + 1)
-            p = sharedX(theta.get_value() * 0.)
+            xi = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
+            g = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
+            g2 = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
+            p = sharedX(theta.get_value() * 0., broadcastable=theta.broadcastable)
             r_t = 1. / (xi + 1.)
             if self.precondition:
                 g_t = (1. - r_t) * g + r_t * grad
@@ -85,9 +85,9 @@ class SGLDSampler(SGHMCSampler):
         self.A = T.cast(A, theano.config.floatX)
         self.inputs = inputs
         for theta,grad in zip(params, grads):
-            xi = sharedX(theta.get_value() * 0. + 1)
-            g = sharedX(theta.get_value() * 0. + 1)
-            g2 = sharedX(theta.get_value() * 0. + 1)
+            xi = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
+            g = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
+            g2 = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
             r_t = 1. / (xi + 1.)
             if self.precondition:
                 g_t = (1. - r_t) * g + r_t * grad

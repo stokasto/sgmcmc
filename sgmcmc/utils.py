@@ -36,5 +36,8 @@ def floatX(X):
     return np.asarray(X, dtype=theano.config.floatX)
 
 
-def sharedX(X, dtype=theano.config.floatX, name=None):
-    return theano.shared(np.asarray(X, dtype=dtype), name=name)
+def sharedX(X, dtype=theano.config.floatX, name=None, broadcastable=None):
+    if broadcastable:
+        return theano.shared(np.asarray(X, dtype=dtype), name=name, broadcastable=broadcastable)
+    else:
+        return theano.shared(np.asarray(X, dtype=dtype), name=name)
