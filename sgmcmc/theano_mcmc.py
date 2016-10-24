@@ -37,7 +37,7 @@ class SGHMCSampler(object):
             eps_scaled = epsilon / np.sqrt(scale_grad)
             new_mdecay = A * eps_scaled
             self.mdecay = T.cast(new_mdecay, theano.config.floatX)
-            print("You specified A of {} -> changing mdecay to {}".format(mdecay, newA))
+            print("You specified A of {} -> changing mdecay to {}".format(A, mdecay))
             
         for theta,grad in zip(params, grads):
             xi = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
@@ -82,7 +82,7 @@ class SGHMCSampler(object):
         nll = self.step_fun(*inp)
         return self.params, nll
 
-    def step_burn_in(self):
+    def step_burn_in(self, *inp):
         if not self.prepared:
             raise RuntimeError("You called step_burn_in() without a prior call to prepare_updates()")
         if not hasattr(self, "step_fun_burn_in"):
