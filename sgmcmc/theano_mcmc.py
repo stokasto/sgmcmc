@@ -67,7 +67,8 @@ class SGHMCSampler(object):
             self.updates.append((p, p_t))
         self.prepared = True
         if self.ignore_burn_in:
-            return self.updates + self.burn_in_updates
+            self.updates += self.burn_in_updates
+            return self.updates
         else:
             return self.updates, self.burn_in_updates
 

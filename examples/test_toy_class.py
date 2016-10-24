@@ -12,17 +12,17 @@ from sklearn.datasets import make_moons
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
-from sgmcmc.theano_mcmc import SGLDSampler
+from sgmcmc.theano_mcmc import SGLDSampler, SGHMCSampler
 from sgmcmc.utils import sharedX, floatX, shuffle
 import sacred
 
 from collections import deque
 
-ex = sacred.Experiment("toy_class_sgld")
+ex = sacred.Experiment("toy_class")
 
 @ex.config
 def config():
-    lrate = 1e-4
+    lrate = 1e-3
     n_samples = 5 * 10**4
     bsize = 100
     n_nets = 100
@@ -75,8 +75,8 @@ def main(lrate, n_samples, bsize, n_nets):
     X = scale(X)
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=.5)
     net = get_net()
-    sampler = SGLDSampler(precondition=True)
-    all_params = lasagne.layers.get_all_params(net, trainable=True, A=1)
+    sampler = SGHMCSampler(precondition=True, ignore_burn_in=True)
+    all_params = lasagne.layers.get_all_params(net, trainable=True)
 
     Xt = T.matrix()
     Yt = T.matrix()
