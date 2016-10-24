@@ -83,7 +83,7 @@ def main(lrate, n_samples, bsize, n_nets):
     U, params = neg_log_like(net, Xt, Yt, Xsize=X_train.shape[0])
     # we could also use these updates in our custom function
     # but instead we will use the sampler.step function below
-    updates = sampler.prepare_updates(U, params, lrate, inputs=[Xt, Yt])
+    updates = sampler.prepare_updates(U, params, lrate, mdecay=0.01, inputs=[Xt, Yt])
     err = class_error(net, Xt, Yt)
     compute_err = theano.function([Xt, Yt], err)
     predict = theano.function([Xt], lasagne.layers.get_output(net, Xt))
