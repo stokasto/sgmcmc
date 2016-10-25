@@ -1,10 +1,7 @@
 import theano
 import theano.tensor as T
 import math
-import cPickle
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
-
-import lasagne
 
 from ..utils import *
 

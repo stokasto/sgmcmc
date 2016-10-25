@@ -11,9 +11,8 @@ from collections import deque
 import lasagne
 from lasagne.layers import InputLayer, DenseLayer
 
-from sgmcmc.theano_mcmc import SGLDSampler, SGHMCSampler
 from sgmcmc.utils import sharedX, floatX, shuffle
-from sgmcmc.bnn.priors import WeightPrior, LogVariancePrior
+from sgmcmc.bnn.model import HMCBNN
 from sgmcmc.bnn.lasagne_layers import AppendLayer
 
 np.random.seed(8)
@@ -70,74 +69,15 @@ def get_net():
     return l_out
 
 
-def log_like(f_net, X, Y, n_examples, weight_prior, variance_prior):
-    f_out = lasagne.layers.get_output(f_net, X)
-    f_mean = f_out[:, 0].reshape((-1, 1))
-    f_log_var = f_out[:, 1].reshape((-1, 1))
-    f_var_inv = 1. / (T.exp(f_log_var) + 1e-16)
-    MSE = T.square(Y - f_mean)
-    log_like = T.sum(T.sum(-MSE * (0.5*f_var_inv) - 0.5*f_log_var, axis=1))
-    # scale by batch size to make this work nicely with the updaters above
-    log_like /= T.cast(X.shape[0], theano.config.floatX)
-    #priors, scale these by dataset size for the same reason
-    # prior for the variance
-    tn_examples = T.cast(n_examples, theano.config.floatX) 
-    log_like += variance_prior.log_like(f_log_var, n_examples) / tn_examples
-    # prior for the weights
-    params = lasagne.layers.get_all_params(f_net, regularizable=True)
-    log_like += weight_prior.log_like(params) / tn_examples
-    return log_like, T.mean(MSE)
+burn_in = 1000
+n_samples = 10000
 
-def sample_predictions(out_fun, f_net, mcmc_samples, X):
-    y = []
-    var = []
-    for sample in mcmc_samples:
-        lasagne.layers.set_all_param_values(f_net, sample)
-        f_out = out_fun(X)
-        y.append(f_out[:, 0])
-        var.append(np.exp(f_out[:, 1]) + 1e-16)
-                
-    return np.asarray(y), np.asarray(var)
+model = HMCBNN(get_net, capture_every=50, burn_in=burn_in)
 
-
-burn_in = 3000
-n_samples = 15000
-bsize = 20
-n_examples = X.shape[0]
-variance_prior = LogVariancePrior(1e-4, prior_out_std_prec=0.01)
-weight_prior = WeightPrior(alpha=1., beta=1.)
-
-net = get_net()
-Xt = T.matrix()
-Yt = T.matrix()
-nll,mse = log_like(net, Xt, Yt, n_examples, weight_prior, variance_prior)
-params = lasagne.layers.get_all_params(net, trainable=True)
-sampler = SGHMCSampler(precondition=True, ignore_burn_in=True)
-sampler.prepare_updates(-nll, params, np.sqrt(1e-4), mdecay=0.05, scale_grad=n_examples, inputs=[Xt, Yt])
-compute_err = theano.function([Xt, Yt], [mse,nll])
-predict = theano.function([Xt], lasagne.layers.get_output(net, Xt))
-
-print("Starting sampling")
-X, y = shuffle(X, y)
-X = floatX(X)
-y = floatX(y)
-samples = deque(maxlen=100)
-for i in range(n_samples):
-    if X.shape[0] == bsize:
-        start = 0
-    else:
-        start = (i * bsize) % (X.shape[0] - bsize)
-    xmb = floatX(X[start:start+bsize])
-    ymb = floatX(y[start:start+bsize]).reshape((-1, 1))
-    _,nll = sampler.step(xmb, ymb)
-    if i % 1000 == 0:
-        total_err, total_nll = compute_err(floatX(X), floatX(y).reshape(-1,1))
-        print("{}/{} : NLL = {} TOTAL={} ERR = {}".format(i, n_samples, nll,total_nll,total_err))
-    if i > 10000 and i % 50 == 0:
-        samples.append(lasagne.layers.get_all_param_values(net))
+model.train(X, y, n_samples, epsilon=1e-2)
 
 # sort from left to right
-ys, var = sample_predictions(predict, net, samples, Xtest)
+ys, var = model.sample_predictions(Xtest)
 print(ys.shape, var.shape)
 mean_pred = np.mean(ys, axis=0) #.reshape(-1)
 std_pred  = np.std(ys, axis=0) #.reshape(-1)

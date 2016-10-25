@@ -19,7 +19,16 @@ class SGHMCSampler(object):
         self.ignore_burn_in = ignore_burn_in
         self.steps_burn_in = 0
         self.requires_burn_in = self.precondition
+        self.optim_params = []
+        self.initial_values = []
 
+    def _store_initial_values(self, *params):
+        self.optim_params = []
+        self.initial_values = []
+        for param in params:
+            self.optim_params.append(param)
+            self.initial_values.append(param.get_value())            
+            
     def prepare_updates(self, cost, params, epsilon, mdecay=0.05, inputs=[], scale_grad=1.,
                         A=None, **kwargs):
         self.updates = []
@@ -29,14 +38,15 @@ class SGHMCSampler(object):
         self.cost = cost
         self.count = sharedX(0)
         self.epsilon = sharedX(np.float32(epsilon))
-        self.mdecay = mdecay 
+        self.mdecay = sharedX(np.float32(mdecay ))
         self.inputs = inputs
+        self.scale_grad = theano.shared(np.float32(scale_grad))
         if A is not None:
             # calculate mdecay based on A
             #raise NotImplementedError("TODO")
             eps_scaled = epsilon / np.sqrt(scale_grad)
             new_mdecay = A * eps_scaled
-            self.mdecay = T.cast(new_mdecay, theano.config.floatX)
+            self.mdecay.set_value(np.float32(new_mdecay))
             print("You specified A of {} -> changing mdecay to {}".format(A, mdecay))
             
         for theta,grad in zip(params, grads):
@@ -45,6 +55,7 @@ class SGHMCSampler(object):
             g2 = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
             p = sharedX(theta.get_value() * 0., broadcastable=theta.broadcastable)
             r_t = 1. / (xi + 1.)
+            self._store_initial_values(xi, g, g2, p)
             if self.precondition:
                 g_t = (1. - r_t) * g + r_t * grad
                 g2_t = (1. - r_t) * g2 + r_t * grad**2
@@ -57,7 +68,7 @@ class SGHMCSampler(object):
             else:
                 Minv = 1.
                 noise = 0.
-            self.epsilon_scaled = self.epsilon / T.sqrt(T.cast(scale_grad, dtype=theano.config.floatX))
+            self.epsilon_scaled = self.epsilon / T.sqrt(self.scale_grad)
             noise_scale = 2. * self.epsilon_scaled ** 2 * self.mdecay * Minv - 2. * self.epsilon_scaled ** 3 * T.square(Minv) * noise
             sigma = T.sqrt(T.maximum(noise_scale, 1e-16))
             sample_t = self._srng.normal(size=theta.shape) * sigma
@@ -97,6 +108,22 @@ class SGHMCSampler(object):
         self.steps_burn_in += 1
         return self.params, nll
 
+    def reset(self, n_samples, epsilon, **kwargs):
+        if self.prepared:
+            self.epsilon.set_value(np.float32(epsilon))
+            self.scale_grad.set_value(np.float32(n_samples))
+            if hasattr(self, "mdecay"):
+                if "mdecay" in kwargs:
+                    self.mdecay.set_value(np.float32(kwargs["mdecay"]))
+                elif "A" in kwargs:
+                    eps_scaled = self.epsilon.get_value() / np.sqrt(n_samples)
+                    new_mdecay = A * eps_scaled
+                    self.mdecay.set_value(np.float32(new_mdecay))
+            for param,value in zip(self.optim_params, self.initial_values):
+                param.set_value(value)
+        else:
+            raise RuntimeError("reset called before prepare")
+
 class SGLDSampler(SGHMCSampler):
 
     def __init__(self, rng=None, precondition=False):
@@ -117,6 +144,7 @@ class SGLDSampler(SGHMCSampler):
             g = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
             g2 = sharedX(theta.get_value() * 0. + 1, broadcastable=theta.broadcastable)
             r_t = 1. / (xi + 1.)
+            self._store_initial_values(xi, g, g2)
             if self.precondition:
                 g_t = (1. - r_t) * g + r_t * grad
                 g2_t = (1. - r_t) * g2 + r_t * grad**2
