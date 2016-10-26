@@ -12,7 +12,7 @@ class HMCBNN(object):
 
     def __init__(self, f_net_fun,
                  burn_in=1000, capture_every=50, log_every=100,
-                 update_prior_every=500, out_type='Gaussian',
+                 update_prior_every=100, out_type='Gaussian',
                  updater=None, weight_prior=WeightPrior(),
                  variance_prior=LogVariancePrior(1e-4, 0.01),
                  n_target_nets=50, rng=None):
