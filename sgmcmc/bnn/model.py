@@ -62,10 +62,10 @@ class HMCBNN(object):
         log_like /= T.cast(X.shape[0], theano.config.floatX)
         #priors, scale these by dataset size for the same reason
         # prior for the variance
-        tn_examples = T.cast(n_examples, theano.config.floatX) 
-        log_like += self.variance_prior.log_like(f_log_var, n_examples) / tn_examples
+        self.tn_examples = sharedX(np.float32(n_examples))
+        log_like += self.variance_prior.log_like(f_log_var, n_examples) / self.tn_examples
         # prior for the weights
-        log_like += self.weight_prior.log_like(lasagne.layers.get_all_params(self.f_net, regularizable=True)) / tn_examples
+        log_like += self.weight_prior.log_like(lasagne.layers.get_all_params(self.f_net, regularizable=True)) / self.tn_examples
         return log_like, T.sum(MSE)
 
 
@@ -103,6 +103,7 @@ class HMCBNN(object):
 
     def update_for_train(self, shape, bsize, epsilon, retrain=True, **kwargs):
         n_examples = shape[0]
+        self.tn_examples.set_value(np.float32(n_examples))
         # reset the network parameters without having to recompile the theano graph
         if retrain:
             new_net = self.f_net_fun()
