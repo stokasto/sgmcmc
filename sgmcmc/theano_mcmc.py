@@ -108,7 +108,7 @@ class SGHMCSampler(object):
         self.steps_burn_in += 1
         return self.params, nll
 
-    def reset(self, n_samples, epsilon, **kwargs):
+    def reset(self, n_samples, epsilon, reset_opt_params=False, **kwargs):
         if self.prepared:
             self.epsilon.set_value(np.float32(epsilon))
             self.scale_grad.set_value(np.float32(n_samples))
@@ -119,8 +119,9 @@ class SGHMCSampler(object):
                     eps_scaled = self.epsilon.get_value() / np.sqrt(n_samples)
                     new_mdecay = A * eps_scaled
                     self.mdecay.set_value(np.float32(new_mdecay))
-            for param,value in zip(self.optim_params, self.initial_values):
-                param.set_value(value)
+            if reset_opt_params:
+                for param,value in zip(self.optim_params, self.initial_values):                
+                    param.set_value(value)
         else:
             raise RuntimeError("reset called before prepare")
 

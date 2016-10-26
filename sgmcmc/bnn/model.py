@@ -113,7 +113,7 @@ class HMCBNN(object):
         self.mcmc_samples = []
         self.weight_prior.update_for_train(n_examples)
         self.variance_prior.update_for_train(n_examples)
-        self.updater.reset(n_examples, epsilon, **kwargs)
+        self.updater.reset(n_examples, epsilon, reset_opt_params=retrain, **kwargs)
     
     def step(self, X, Y, capture=True):
         if self.steps <= self.burn_in:
