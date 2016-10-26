@@ -52,7 +52,7 @@ class WeightPrior(object):
             W_size += np.prod(W.shape)
         alpha = self.alpha_prior + 0.5 * W_size
         beta  = self.beta_prior + 0.5 * W_sum
-        p_wd = np.random.gamma(alpha, 1./beta)
+        p_wd = np.random.gamma(alpha, 1./(beta + 1e-4))
         # wd is the next weight decay
         wd = p_wd #/ self.n_data
         # the scaling with n_data above is now done in
