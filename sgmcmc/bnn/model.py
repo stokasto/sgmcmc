@@ -132,7 +132,7 @@ class HMCBNN(object):
                 lasagne.layers.set_all_param_values(self.f_nets[idx], self.mcmc_samples[-1])
         if self.steps % self.log_every == 0:
             print("Step: {} stored_samples : {} WD : {},  NLL = {}, MSE = {}, Noise = {}".format(self.steps, len(self.mcmc_samples), self.weight_prior.get_decay().get_value(), cost, mse, float(np.exp(self.f_net.b.get_value()))))
-        if self.steps > self.burn_in and self.steps % self.update_prior_every == 0:
+        if self.steps > 1 and self.steps % self.update_prior_every == 0:
             self.weight_prior.update(lasagne.layers.get_all_params(self.f_net, regularizable=True))
         self.steps += 1
         return cost
