@@ -15,7 +15,7 @@ def log_normal2(x, mean, log_var, eps=1e-4):
    
 class WeightPrior(object):
 
-    def __init__(self, rng=None, alpha=1, beta=1000.):
+    def __init__(self, rng=None, alpha=1, beta=10000.):
         if rng:
             self._srng = rng
         else:

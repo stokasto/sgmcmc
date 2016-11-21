@@ -11,11 +11,11 @@ from .priors import WeightPrior, LogVariancePrior
 class HMCBNN(object):
 
     def __init__(self, f_net_fun,
-                 burn_in=1000, capture_every=50, log_every=100,
+                 burn_in=2000, capture_every=50, log_every=100,
                  update_prior_every=100, out_type='Gaussian',
                  updater=None, weight_prior=WeightPrior(),
                  variance_prior=LogVariancePrior(1e-4, 0.01),
-                 n_target_nets=50, rng=None):
+                 n_target_nets=100, rng=None):
         if rng:
             self._srng = rng
         else:
@@ -52,7 +52,7 @@ class HMCBNN(object):
         f_out = lasagne.layers.get_output(self.f_net, X)
         f_mean = f_out[:, 0].reshape((-1, 1))
         f_log_var = f_out[:, 1].reshape((-1, 1))
-        f_var_inv = 1. / (T.exp(f_log_var) + 1e-16)
+        f_var_inv = 1. / (T.exp(f_log_var) + 1e-8)
         MSE = T.square(Y - f_mean)
         if self.out_type == 'Gaussian':
             log_like = T.sum(T.sum(-MSE * (0.5*f_var_inv) - 0.5*f_log_var, axis=1))
@@ -71,6 +71,7 @@ class HMCBNN(object):
 
     def prepare_for_train(self, shape, bsize, epsilon, **kwargs):
         n_examples = shape[0]
+        self.n_examples = n_examples
         self.steps = 0
         self.mcmc_samples = []
         self.params = lasagne.layers.get_all_params(self.f_net, trainable=True)
@@ -103,6 +104,7 @@ class HMCBNN(object):
 
     def update_for_train(self, shape, bsize, epsilon, retrain=True, **kwargs):
         n_examples = shape[0]
+        self.n_examples = n_examples
         self.tn_examples.set_value(np.float32(n_examples))
         # reset the network parameters without having to recompile the theano graph
         if retrain:
