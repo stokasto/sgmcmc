@@ -59,7 +59,7 @@ class SGHMCSampler(object):
             if self.precondition:
                 g_t = (1. - r_t) * g + r_t * grad
                 g2_t = (1. - r_t) * g2 + r_t * grad**2
-                xi_t = 1 + xi * (1 - g * g / (g2 + 1e-16))
+                xi_t = 1. + xi * (1. - g * g / (g2 + 1e-16))
                 Minv = 1. / (T.sqrt(g2 + 1e-16) + 1e-16)
                 self.burn_in_updates.append((g, g_t))
                 self.burn_in_updates.append((g2, g2_t))
@@ -88,6 +88,7 @@ class SGHMCSampler(object):
             raise RuntimeError("You called step() without a prior call to prepare_updates()")
         if not hasattr(self, "step_fun"):
             print("... compiling theano function")
+
             self.step_fun = theano.function(self.inputs, self.cost, updates=self.updates)
         if not self.ignore_burn_in and self.steps_burn_in < 1 and self.requires_burn_in:
             raise RuntimeError("Your sampler requires a burn_in please run step_burn_in() for a few steps")
