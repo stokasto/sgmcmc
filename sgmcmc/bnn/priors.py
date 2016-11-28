@@ -73,7 +73,7 @@ class LogVariancePrior(object):
         
     def log_like(self, log_var, n_examples):
         #return T.sum(T.sum(-T.square(log_var - T.log(self.prior_out_std)) / (2*self.prior_out_std_prec) - 0.5*T.log(self.prior_out_std_prec) -HALF_LOG2PI, axis=1)) #/ self.n_examples
-        return T.mean(T.sum(-T.square(log_var - T.log(self.prior_out_std)) / (2*self.prior_out_std_prec) - 0.5*T.log(self.prior_out_std_prec), axis=1)) #/ self.n_examples
+        return T.mean(T.sum(-T.square(log_var - T.log(self.prior_out_std)) / (2*self.prior_out_std_prec) - 0.5*T.log(self.prior_out_std_prec)*log_var, axis=1)) #/ self.n_examples
 
 class HorseShoePrior(object):
 
