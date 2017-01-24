@@ -38,10 +38,12 @@ class WeightPrior(object):
 
     def log_like(self, params):
         ll = 0.
+        n_params = 0
         # NOTE: we are dropping all constants here
         for p in params:
             ll += T.sum(-self.wdecay * 0.5 * T.square(p))
-        return ll
+            n_params += T.prod(p.shape)
+        return ll / n_params
     
     def update(self, params):
         W_sum = 0
@@ -58,12 +60,19 @@ class WeightPrior(object):
         # the scaling with n_data above is now done in
         # the log likeliehood (where it should be!)
         self.wdecay.set_value(np.float32(wd))
-    
+
+
 class LogVariancePrior(object):
 
-    def __init__(self, prior_out_std, prior_out_std_prec=0.1):
-        self.prior_out_std = prior_out_std
-        self.prior_out_std_prec = prior_out_std_prec
+    def __init__(self, mean, var=2):
+        """
+        Prior on the log predicted variance
+        :param mean: Actual mean on a linear scale: Default 10E-3
+        :param var: Variance on a log scale: Default 2
+        """
+
+        self.mean = mean
+        self.var = var
 
     def prepare_for_train(self, n_examples):
         self.n_examples = theano.shared(np.float32(n_examples))
@@ -71,9 +80,13 @@ class LogVariancePrior(object):
     def update_for_train(self, n_examples):
         self.n_examples.set_value(np.float32(n_examples))
         
-    def log_like(self, log_var, n_examples):
+    def log_like(self, log_var):
         #return T.sum(T.sum(-T.square(log_var - T.log(self.prior_out_std)) / (2*self.prior_out_std_prec) - 0.5*T.log(self.prior_out_std_prec) -HALF_LOG2PI, axis=1)) #/ self.n_examples
-        return T.mean(T.sum(-T.square(log_var - T.log(self.prior_out_std)) / (2*self.prior_out_std_prec) - 0.5*T.log(self.prior_out_std_prec)*log_var, axis=1)) #/ self.n_examples
+        #return T.mean(T.sum(-T.square(log_var - T.log(self.prior_out_std)) / (2*self.prior_out_std_prec) - 0.5*T.log(self.prior_out_std_prec)*log_var, axis=1)) #/ self.n_examples
+        return T.mean(T.sum(
+            -T.square(log_var - T.log(self.mean)) / (2 * self.var) - 0.5 * T.log(
+                self.var), axis=1))  # / self.n_examples
+
 
 class HorseShoePrior(object):
 
@@ -86,6 +99,6 @@ class HorseShoePrior(object):
     def update_for_train(self, n_examples):
         self.n_examples.set_value(np.float32(n_examples))
         
-    def log_like(self, log_var, n_examples):
+    def log_like(self, log_var):
         return T.mean(T.sum(T.log(T.log(1. + (self.scale / (T.exp(log_var))))), axis=1))
 
